@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contact | JERTIE MUANA DIVIN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="contact">
+<main id="contenu" class="page">
+  <section class="contact-page">
+    <div>
+      <h1>Contact</h1>
+      <p>Une question sur un article, une taille ou une commande ? Écrivez-nous : votre message s'ouvre directement dans WhatsApp.</p>
+      <a class="bouton" data-whatsapp href="#">Écrire sur WhatsApp</a>
+    </div>
+    <form id="form-contact" class="formulaire">
+      <label for="c-nom">Votre nom</label>
+      <input id="c-nom" name="nom" type="text" required autocomplete="name">
+      <label for="c-msg">Votre message</label>
+      <textarea id="c-msg" name="message" rows="5" required></textarea>
+      <button class="bouton" type="submit">Envoyer sur WhatsApp</button>
+    </form>
+  </section>
+</main>
+<script src="js/app.js"></script>
+</body>
+</html>

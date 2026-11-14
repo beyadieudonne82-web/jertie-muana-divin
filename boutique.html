@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boutique | JERTIE MUANA DIVIN</title>
+<meta name="description" content="Toute la boutique JERTIE MUANA DIVIN : vêtements homme, femme, enfant et chaussures.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="boutique">
+<main id="contenu" class="page">
+  <div class="boutique-layout">
+    <details class="filtres" id="panneau" open>
+      <summary>Filtres</summary>
+      <div id="panneau-contenu"></div>
+    </details>
+    <section aria-labelledby="titre-page">
+      <div class="boutique-tete">
+        <div><h1 id="titre-page">Boutique</h1><p class="compteur" id="compteur" aria-live="polite"></p></div>
+        <label class="tri"><span>Trier par</span>
+          <select id="tri">
+            <option value="pertinence">Sélection</option>
+            <option value="nouveautes">Nouveautés d'abord</option>
+            <option value="prix-asc">Prix croissant</option>
+            <option value="prix-desc">Prix décroissant</option>
+          </select>
+        </label>
+      </div>
+      <div class="grille" id="grille"></div>
+      <p class="vide" id="vide" hidden>Aucun article ne correspond. Modifiez vos filtres ou votre recherche.</p>
+    </section>
+  </div>
+</main>
+<script src="js/app.js"></script>
+</body>
+</html>
