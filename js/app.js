@@ -1,8 +1,8 @@
 // ===== À MODIFIER =====
 const CONFIG = {
-  whatsapp: "243999275259",   // numéro du client, format international sans + ni espaces
+  whatsapp: "243000000000",   // numéro du client, format international sans + ni espaces
   boutique: "JERTIE MUANA DIVIN",
-  tauxCDF: 2300               // 1 $ = ... FC (indicatif, à ajuster)
+  tauxCDF: 2800               // 1 $ = ... FC (indicatif, à ajuster)
 };
 // ======================
 
@@ -24,11 +24,12 @@ let panier = store.get("jmd_panier", []);      // [{id, taille, qte}]
 let favoris = store.get("jmd_favoris", []);    // [id]
 let prefs = Object.assign({ devise: "USD", theme: "clair" }, store.get("jmd_prefs", {}));
 let rendre = () => {};                         // redessine la page courante
-const F = { cat: "tous", q: "", prixMax: Infinity, tailles: [], tri: "pertinence", nouveau: false, favoris: false };
+const F = { cat: "tous", type: "tous", q: "", prixMax: Infinity, tailles: [], tri: "pertinence", nouveau: false, favoris: false };
 
 const fmt = (usd) => prefs.devise === "CDF"
   ? `${Math.round(usd * CONFIG.tauxCDF).toLocaleString("fr-FR")} FC`
   : `${usd} $`;
+const prixAff = (p) => (p.prix > 0 ? fmt(p.prix) : "Prix sur demande");
 const parId = (id) => produits.find((p) => p.id === Number(id));
 const lienWA = (message) => `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(message || `Bonjour ${CONFIG.boutique}, j'ai une question sur vos articles.`)}`;
 
@@ -181,9 +182,9 @@ function ajouterPanier(id, taille, qte) {
 }
 
 const carte = (p) => `<article class="carte">
-  <a class="carte-lien" href="produit.html?id=${p.id}" aria-label="Voir ${esc(p.nom)}, ${esc(fmt(p.prix))}">
+  <a class="carte-lien" href="produit.html?id=${p.id}" aria-label="Voir ${esc(p.nom)}, ${esc(prixAff(p))}">
     <span class="carte-photo"><img src="${esc(p.images[0])}" alt="${esc(p.nom)}" loading="lazy">${p.nouveau ? '<span class="badge">Nouveau</span>' : ""}</span>
-    <span class="carte-nom">${esc(p.nom)}</span><span class="carte-prix">${esc(fmt(p.prix))}</span>
+    <span class="carte-nom">${esc(p.nom)}</span><span class="carte-prix">${esc(prixAff(p))}</span>
   </a>
   <button class="coeur" type="button" data-fav="${p.id}" aria-pressed="${favoris.includes(p.id)}" aria-label="Favori : ${esc(p.nom)}"><svg class="ico"><use href="#i-coeur"/></svg></button>
 </article>`;
@@ -204,14 +205,17 @@ function pageBoutique() {
   F.q = (u.get("q") || "").trim();
   F.nouveau = u.get("nouveau") === "1";
   F.favoris = u.get("favoris") === "1";
-  const max = produits.length ? Math.ceil(Math.max(...produits.map((p) => p.prix)) / 5) * 5 : 100;
+  const max = produits.length ? Math.ceil(Math.max(5, ...produits.map((p) => p.prix || 0)) / 5) * 5 : 100;
   F.prixMax = max;
   const cats = Object.keys(LABELS).filter((c) => produits.some((p) => p.categorie === c));
   const tailles = [...new Set(produits.flatMap((p) => p.tailles || []))];
+  const types = [...new Set(produits.map((p) => p.type).filter(Boolean))];
+  F.type = types.includes(u.get("type")) ? u.get("type") : "tous";
   $("#recherche-haut").value = F.q;
   $("#panneau-contenu").innerHTML = `
     <fieldset><legend>Catégorie</legend>${["tous", ...cats].map((c) =>
       `<label class="choix"><input type="radio" name="cat" value="${c}"${c === F.cat ? " checked" : ""}><span>${c === "tous" ? "Toutes" : LABELS[c]}</span></label>`).join("")}</fieldset>
+    <fieldset><legend>Type</legend><select id="filtre-type" aria-label="Type d'article"><option value="tous">Tous les types</option>${types.map((t) => `<option value="${esc(t)}"${t === F.type ? " selected" : ""}>${esc(t)}</option>`).join("")}</select></fieldset>
     <fieldset><legend>Prix maximum : <output id="prix-sortie"></output></legend>
       <input type="range" id="prix-max" min="5" max="${max}" step="5" value="${max}" aria-label="Prix maximum"></fieldset>
     <fieldset><legend>Taille</legend><div class="tailles">${tailles.map((t) =>
@@ -222,13 +226,14 @@ function pageBoutique() {
   rendre = () => {
     let liste = produits.filter((p) =>
       (F.cat === "tous" || p.categorie === F.cat) &&
-      p.prix <= F.prixMax &&
+      (F.type === "tous" || p.type === F.type) &&
+      (!(p.prix > 0) || p.prix <= F.prixMax) &&
       (!F.q || p.nom.toLowerCase().includes(F.q.toLowerCase())) &&
       (!F.tailles.length || (p.tailles || []).some((t) => F.tailles.includes(t))) &&
       (!F.nouveau || p.nouveau) &&
       (!F.favoris || favoris.includes(p.id)));
-    if (F.tri === "prix-asc") liste.sort((a, b) => a.prix - b.prix);
-    if (F.tri === "prix-desc") liste.sort((a, b) => b.prix - a.prix);
+    if (F.tri === "prix-asc") liste.sort((a, b) => (a.prix || 1e9) - (b.prix || 1e9));
+    if (F.tri === "prix-desc") liste.sort((a, b) => (b.prix || 0) - (a.prix || 0));
     if (F.tri === "nouveautes") liste.sort((a, b) => Number(b.nouveau) - Number(a.nouveau));
     const titre = F.favoris ? "Mes favoris" : F.nouveau ? "Nouveautés" : F.q ? `Résultats pour « ${F.q} »` : F.cat !== "tous" ? LABELS[F.cat] : "Boutique";
     $("#titre-page").textContent = titre;
@@ -245,6 +250,7 @@ function pageBoutique() {
 function lireFiltres() {
   const c = $('input[name="cat"]:checked');
   F.cat = c ? c.value : "tous";
+  F.type = $("#filtre-type").value;
   F.prixMax = Number($("#prix-max").value);
   F.tailles = $$('input[name="taille"]:checked').map((i) => i.value);
   F.tri = $("#tri").value;
@@ -260,7 +266,7 @@ function pageProduit() {
   let qte = 1;
 
   const majCommande = () => {
-    $("#commander").href = lienWA(`Bonjour ${CONFIG.boutique}, je souhaite commander : ${p.nom}${taille ? ` (taille ${taille})` : ""} x${qte}, ${fmt(p.prix * qte)}. Réf. ${p.id}`);
+    $("#commander").href = lienWA(`Bonjour ${CONFIG.boutique}, je souhaite commander : ${p.nom}${taille ? ` (taille ${taille})` : ""} x${qte}, ${p.prix > 0 ? fmt(p.prix * qte) : "prix à confirmer"}. Réf. ${p.id}`);
   };
 
   rendre = () => {
@@ -276,7 +282,7 @@ function pageProduit() {
         <div class="fiche-infos">
           ${p.nouveau ? '<span class="badge" style="position:static;display:inline-block;background:var(--sable)">Nouveau</span>' : ""}
           <h1>${esc(p.nom)}</h1>
-          <p class="fiche-prix">${esc(fmt(p.prix))}</p>
+          <p class="fiche-prix">${esc(prixAff(p))}</p>
           ${p.description ? `<p>${esc(p.description)}</p>` : ""}
           ${tailles.length ? `<fieldset><legend>Taille</legend><div class="tailles">${tailles.map((t) =>
             `<label class="taille"><input type="radio" name="taille" value="${esc(t)}"${t === taille ? " checked" : ""}><span>${esc(t)}</span></label>`).join("")}</div></fieldset>` : ""}
@@ -325,25 +331,26 @@ function pagePanier() {
       zone.innerHTML = '<p class="vide">Votre panier est vide.</p><a class="bouton" href="boutique.html">Découvrir la boutique</a>';
       return;
     }
-    const total = lignes.reduce((s, l) => s + l.p.prix * l.qte, 0);
+    const total = lignes.reduce((s, l) => s + (l.p.prix > 0 ? l.p.prix * l.qte : 0), 0);
+    const sansPrix = lignes.some((l) => !(l.p.prix > 0));
     const nb = lignes.reduce((s, l) => s + l.qte, 0);
     const message = `Bonjour ${CONFIG.boutique}, je souhaite commander :\n` +
-      lignes.map((l) => `- ${l.p.nom}${l.taille ? `, taille ${l.taille}` : ""} x${l.qte} = ${fmt(l.p.prix * l.qte)}`).join("\n") +
-      `\nTotal : ${fmt(total)}`;
+      lignes.map((l) => `- ${l.p.nom}${l.taille ? `, taille ${l.taille}` : ""} x${l.qte} ${l.p.prix > 0 ? `= ${fmt(l.p.prix * l.qte)}` : "(prix à confirmer)"}`).join("\n") +
+      `\nTotal : ${fmt(total)}${sansPrix ? " + articles dont le prix est à confirmer" : ""}`;
     zone.innerHTML = `<div class="panier-grille">
       <ul class="lignes">${lignes.map((l) => `<li class="ligne">
         <img src="${esc(l.p.images[0])}" alt="${esc(l.p.nom)}">
-        <div class="ligne-infos"><a href="produit.html?id=${l.p.id}">${esc(l.p.nom)}</a>${l.taille ? `<span>Taille : ${esc(l.taille)}</span>` : ""}<span>${esc(fmt(l.p.prix))}</span></div>
+        <div class="ligne-infos"><a href="produit.html?id=${l.p.id}">${esc(l.p.nom)}</a>${l.taille ? `<span>Taille : ${esc(l.taille)}</span>` : ""}<span>${esc(prixAff(l.p))}</span></div>
         <div class="quantite" role="group" aria-label="Quantité de ${esc(l.p.nom)}">
           <button type="button" data-ligne="${l.i}" data-delta="-1" aria-label="Diminuer la quantité">&minus;</button>
           <output>${l.qte}</output>
           <button type="button" data-ligne="${l.i}" data-delta="1" aria-label="Augmenter la quantité">+</button>
         </div>
-        <strong>${esc(fmt(l.p.prix * l.qte))}</strong>
+        <strong>${esc(l.p.prix > 0 ? fmt(l.p.prix * l.qte) : "Sur demande")}</strong>
         <button class="lien-suppr" type="button" data-supprimer="${l.i}" aria-label="Retirer ${esc(l.p.nom)} du panier">Retirer</button>
       </li>`).join("")}</ul>
       <aside class="resume"><h2>Récapitulatif</h2>
-        <dl><dt>Articles</dt><dd>${nb}</dd><dt>Total</dt><dd>${esc(fmt(total))}</dd></dl>
+        <dl><dt>Articles</dt><dd>${nb}</dd><dt>Total</dt><dd>${esc(fmt(total))}${sansPrix ? " + sur demande" : ""}</dd></dl>
         <a class="bouton" target="_blank" rel="noopener" href="${esc(lienWA(message))}">Commander sur WhatsApp</a>
         <button class="lien-suppr" type="button" id="vider">Vider le panier</button>
         <p class="note">Votre commande est envoyée sur WhatsApp. La boutique la confirme avec vous, y compris le paiement et la livraison.</p>
@@ -395,6 +402,7 @@ document.addEventListener("click", (e) => {
     $$('input[name="cat"]').forEach((i) => (i.checked = i.value === "tous"));
     $$('input[name="taille"]').forEach((i) => (i.checked = false));
     $("#prix-max").value = $("#prix-max").max;
+    $("#filtre-type").value = "tous";
     $("#tri").value = "pertinence";
     F.nouveau = false; F.favoris = false; F.q = ""; $("#recherche-haut").value = "";
     lireFiltres(); rendre();
